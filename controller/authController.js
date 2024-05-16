@@ -3,7 +3,6 @@ const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 
 const createTokenUser = require("../utils/createTokenUser");
-
 const { createJWT } = require("../utils/jwt");
 
 const register = async (req, res) => {
@@ -17,11 +16,29 @@ const register = async (req, res) => {
   const tokenUser = createTokenUser(user);
   const token = createJWT({ payload: tokenUser });
 
-  res.status(StatusCodes.CREATED).json({ user: user, token: token });
+  res.status(StatusCodes.CREATED).json({ user: tokenUser, token: token });
 };
 
 const login = async (req, res) => {
-  res.send("login");
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new CustomError.BadRequestError("Please provide email and password");
+  }
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new CustomError.UnauthenticatedError("Invalid Credentials");
+  }
+
+  const isPasswordCorrect = await user.comparePassword(password);
+  if (!isPasswordCorrect) {
+    throw new CustomError.UnauthenticatedError("Invalid Credentials");
+  }
+
+  const tokenUser = createTokenUser(user);
+  const token = createJWT({ payload: tokenUser });
+  res.status(StatusCodes.OK).json({ user: tokenUser, token: token });
 };
 
 const logout = async (req, res) => {
